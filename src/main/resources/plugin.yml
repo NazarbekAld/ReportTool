@@ -1,0 +1,15 @@
+name: ReportTool
+version: '${project.version}'
+main: me.nazarxexe.job.admintool.ReportTool
+api-version: 1.16
+
+commands:
+  report:
+    description: Report rule breaker
+    permission: nazarxexe.tool.report
+
+permissions:
+  nazarxexe.tool.admin:
+    default: op
+  nazarxexe.tool.report:
+    default: op

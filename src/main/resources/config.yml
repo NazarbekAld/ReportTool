@@ -1,0 +1,16 @@
+
+database:
+  ip: "127.0.0.1"
+  port: "3306"
+  user: ""
+  password: ""
+  db: ""
+
+suspend:
+  title: "&c&lВы в списке подозреваемого."
+  subtitle: "&7&lДождитесь проверки модераторов"
+
+quick_message:
+  - читы
+  - дюп
+  - спам
