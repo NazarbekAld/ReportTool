@@ -73,17 +73,14 @@ public class Report implements TabCompleter, CommandExecutor {
                             System.currentTimeMillis(),
                             new ArrayList<String>()
                     ));
+                    sender.sendMessage(ChatColor.GREEN + "Вы добавили игрока в спсиок подезриваемых.");
                 }
                 if (args[1].equals("free")) {
                     PlayerListener.getLock().remove(args[2]);
                     ReportTool.getInstance().free(args[2]);
+                    sender.sendMessage(ChatColor.GREEN + "Вы удалили игрока из списка подезриваемых!");
                 }
 
-                if (args[1].equals("cache")){
-                    ReportTool.getCache().asMap().forEach((name, report) -> {
-                        sender.sendMessage(report.toString());
-                    });
-                }
 
             } else {
 
@@ -111,6 +108,7 @@ public class Report implements TabCompleter, CommandExecutor {
                                 add(((Player) sender).getName());
                             }}
                     ));
+                    sender.sendMessage(ChatColor.GREEN + "Вы отправили репорт к игроку!");
                 } else {
 
                     if (ReportTool.getCache().asMap().get(args[0]).getReporters().contains(((Player) sender).getName()))
@@ -129,7 +127,7 @@ public class Report implements TabCompleter, CommandExecutor {
                             System.currentTimeMillis(),
                             existData.getReporters()
                     ));
-
+                    sender.sendMessage(ChatColor.GREEN + "Вы отправили репорт к игроку!");
 
                 }
 
