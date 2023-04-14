@@ -4,10 +4,12 @@ import io.papermc.paper.event.player.AsyncChatEvent;
 import lombok.Getter;
 import me.nazarxexe.job.admintool.ReportTool;
 import me.nazarxexe.job.admintool.database.data.ReportData;
+import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.*;
 import org.jooq.Record;
@@ -29,6 +31,8 @@ public class PlayerListener implements Listener {
     public void onMove(PlayerMoveEvent e) {
         if (lock.contains(e.getPlayer().getName())) {
             e.getPlayer().sendTitle(ReportTool.getInstance().getSuspend_title(), ReportTool.getInstance().getSuspend_subtitle(), 0, 10, 10);
+            e.getPlayer().sendMessage(ReportTool.getInstance().getSuspend_message());
+            e.getPlayer().sendActionBar(Component.text(ReportTool.getInstance().getSuspend_actionbar()));
             e.setCancelled(true);
         }
 
@@ -71,6 +75,11 @@ public class PlayerListener implements Listener {
     public void onDamage(EntityDamageByEntityEvent e) {
         if (!(e.getDamager() instanceof Player)) return;
         if (lock.contains(((Player) e.getDamager()).getName())) e.setCancelled(true);
+    }
+
+    public void onGetDamage(EntityDamageEvent e) {
+        if (!(e instanceof Player)) return;
+        if (lock.contains(((Player) e.getEntity()).getName())) e.setCancelled(true);
     }
 
     @EventHandler

@@ -41,6 +41,9 @@ public final class ReportTool extends JavaPlugin {
     private @Getter String suspend_title;
     private @Getter String suspend_subtitle;
 
+    private @Getter String suspend_message;
+    private @Getter String suspend_actionbar;
+
     @Override
     public void onEnable() {
         // Plugin startup logic
@@ -65,6 +68,8 @@ public final class ReportTool extends JavaPlugin {
 
         suspend_title = ChatColor.translateAlternateColorCodes('&', suspend.getString("title"));
         suspend_subtitle = ChatColor.translateAlternateColorCodes('&', suspend.getString("subtitle"));
+        suspend_message = ChatColor.translateAlternateColorCodes('&', suspend.getString("message"));
+        suspend_actionbar = ChatColor.translateAlternateColorCodes('&', suspend.getString("actionbar"));
 
         getServer().getScheduler().runTaskTimerAsynchronously(this, new CheckSuspend(), 0L, 20L);
 
