@@ -53,7 +53,7 @@ public final class ReportTool extends JavaPlugin {
         cache = new Cache(reportsManager);
         cache.build();
 
-        PlayerListener listener = new PlayerListener(reportsManager);
+        PlayerListener listener = new PlayerListener(reportsManager, cache);
         playerLocker = (PlayerLockable) listener;
 
         command();

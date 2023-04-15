@@ -87,8 +87,15 @@ public class ReportExecutor implements CommandExecutor {
     }
 
     private void report(CommandSender sender, String[] args) {
+
+        if (args[0].equals(sender.getName())) {
+            sender.sendMessage(ChatColor.RED + "Не можете зарепортить сомого себя!");
+            return;
+        }
+
         StringBuffer message = argsToMessage(args, 1);
         ReportData data = cache.get(args[0]);
+
         if (data == null){
             cache.add(new ReportData(
                     args[0],
@@ -97,11 +104,18 @@ public class ReportExecutor implements CommandExecutor {
                     System.currentTimeMillis(),
                     new ArrayList<String>() {{ add(sender.getName()); }}
             ));
+            sender.sendMessage(ChatColor.GREEN + "Вы зарепортили игрока!");
+            return;
+        }
+
+        if (data.getReporters().contains(sender.getName())){
+            sender.sendMessage(ChatColor.RED + "Вы уже зарепортили игрока!");
             return;
         }
 
         data.setReports(data.getReports() + 1);
         data.setMessage(message.toString());
+        data.getReporters().add(sender.getName());
         cache.add(data);
 
         sender.sendMessage(ChatColor.GREEN + "Вы зарепортили игрока!");

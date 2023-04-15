@@ -146,7 +146,6 @@ public class ReportsTable implements TableManageable {
                 .thenAcceptAsync((exist) -> {
                    try {
                        if (exist) {
-                           data.setReports(data.getReports() + 1);
                            DSL.using(database.getConnection(), SQLDialect.MYSQL)
                                    .update(TABLE)
                                    .set(MESSAGE, data.getMessage())
