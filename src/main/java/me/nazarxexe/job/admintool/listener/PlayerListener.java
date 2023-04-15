@@ -3,6 +3,7 @@ package me.nazarxexe.job.admintool.listener;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import me.nazarxexe.job.admintool.ReportTool;
 import me.nazarxexe.job.admintool.database.ReportsTable;
+import me.nazarxexe.job.admintool.impl.ICache;
 import me.nazarxexe.job.admintool.impl.PlayerLockable;
 import me.nazarxexe.job.admintool.impl.TableManageable;
 import net.kyori.adventure.text.Component;
@@ -22,9 +23,12 @@ public class PlayerListener implements Listener, PlayerLockable {
     private final Set<String> lock = new HashSet<>();
 
     private final TableManageable table;
+    private final ICache cache;
 
-    public PlayerListener(TableManageable table) {
+
+    public PlayerListener(TableManageable table, ICache cache) {
         this.table = table;
+        this.cache = cache;
     }
 
     @EventHandler
@@ -93,11 +97,9 @@ public class PlayerListener implements Listener, PlayerLockable {
                     if (exist)
                         table.getReportDataByCondition(ReportsTable.PLAYER.eq(e.getPlayer().getName()))
                                 .thenAccept((reportData -> {
-                                    if (reportData.get(0)
-                                            .getReports() >= 3) {
-                                        lock(e.getPlayer().getName());
+                                        cache.add(reportData.get(0));
                                     }
-                                })).join();
+                                )).join();
                 }).join();
     }
 
