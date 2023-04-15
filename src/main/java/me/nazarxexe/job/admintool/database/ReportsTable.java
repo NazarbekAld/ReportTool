@@ -36,6 +36,7 @@ public class ReportsTable implements TableManageable {
 
     @Override
     public void showList(Player player, int limit) {
+        // Брато из старого кода.
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, new Runnable() {
             @Override
             public void run() {
@@ -92,13 +93,6 @@ public class ReportsTable implements TableManageable {
         });
     }
 
-    /**
-     *
-     * Проверить что игрок уже сушествует в базе по нику.
-     *
-     * @param name Имя
-     * @return Промис CompletableFuture(Boolean)
-     */
     @Override
     public CompletableFuture<Boolean> exist(String name) {
         return exist(PLAYER.eq(name));
@@ -139,6 +133,12 @@ public class ReportsTable implements TableManageable {
         });
     }
 
+    /**
+     *
+     * Одновремено добовляет и заменяет репорт из БД.
+     *
+     * @param data
+     */
     @Override
     public void insertReportData(ReportData data) {
 

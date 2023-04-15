@@ -72,81 +72,101 @@ public class Report implements TabCompleter, CommandExecutor {
                     table.showList((Player) sender, Integer.parseInt(args[2]));
                 }
                 if (args[1].equals("suspend")) {
-
-                    StringBuffer buffer = new StringBuffer();
-
-                    for (int i = 0; i < args.length; i++) {
-                        if (i < 3) continue;
-                        buffer.append(args[i]).append(" ");
-                    }
-
-                    cache.add(new ReportData(
-                            args[2],
-                            buffer.toString(),
-                            999,
-                            System.currentTimeMillis(),
-                            new ArrayList<>()
-                    ));
-                    sender.sendMessage(ChatColor.GREEN + "Вы добавили игрока в спсиок подезриваемых.");
+                    suspend(sender, args);
                 }
                 if (args[1].equals("free")) {
-                    locker.unlock(args[2]);
-                    table.removeReportDataByName(args[2]);
-                    sender.sendMessage(ChatColor.GREEN + "Вы удалили игрока из списка подезриваемых!");
+                    free(sender, args);
                 }
-
 
             } else {
 
                 // PLAYER
-                StringBuffer buffer = new StringBuffer();
-                for (int i=0; i < args.length; i++) {
-                    if (i < 1) continue;
-                    buffer.append(args[i]);
-                }
-
-                ReportData data = cache.get(args[0]);
-
-                if (data == null){
-                    cache.add(new ReportData(
-                            args[0],
-                            buffer.toString(),
-                            1,
-                            System.currentTimeMillis(),
-                            new ArrayList<String>() {{ add(sender.getName()); }}
-                    ));
-                    return true;
-                }
-
-                data.setReports(data.getReports() + 1);
-                data.setMessage(buffer.toString());
-                cache.add(data);
-
-                sender.sendMessage(ChatColor.GREEN + "Вы зарепортили игрока!");
+                report(sender, args);
 
             }
 
             return true;
         }catch (Exception e) {
-
             if (sender.hasPermission("nazarxexe.tool.admin")) {
-                sender.sendMessage(ChatColor.translateAlternateColorCodes('&', new StringBuffer()
-                        .append("&cЧто-то призошло не так!\n")
-                        .append("&fПопробуйте написать комманду правилно.\n")
-                        .append("&f/report <ИГРОК> <ПРИЧИНА...> - Репортить игрока\n")
-                        .append("&f/report admin list <лимит> - Получить список репортов\n")
-                        .append("&f/report admin suspend/free <ИГРОК> - Снять подозрение(free) или Замарозить (suspend)\n")
-                        .toString()));
+                exceptionAdmin(sender);
                 e.printStackTrace();
                 return true;
             }
-            sender.sendMessage(ChatColor.translateAlternateColorCodes('&', new StringBuffer()
-                            .append("&cЧто-то призошло не так!\n")
-                            .append("&fПопробуйте написать комманду правилно.\n")
-                            .append("&f/report <ИГРОК> <ПРИЧИНА...>")
-                    .toString()));
+            exceptionPlayer(sender);
             e.printStackTrace();
             return true;
         }
+    }
+
+
+
+    private void suspend(CommandSender sender, String[] args) {
+        StringBuffer message = argsToMessage(args, 3);
+        cache.add(new ReportData(
+                args[2],
+                message.toString(),
+                999,
+                System.currentTimeMillis(),
+                new ArrayList<>()
+        ));
+        sender.sendMessage(ChatColor.GREEN + "Вы добавили игрока в спсиок подезриваемых.");
+    }
+
+    private void free(CommandSender sender, String[] args) {
+        locker.unlock(args[2]);
+        table.removeReportDataByName(args[2]);
+        sender.sendMessage(ChatColor.GREEN + "Вы удалили игрока из списка подезриваемых!");
+    }
+
+    private void report(CommandSender sender, String[] args) {
+        StringBuffer message = argsToMessage(args, 1);
+        ReportData data = cache.get(args[0]);
+        if (data == null){
+            cache.add(new ReportData(
+                    args[0],
+                    message.toString(),
+                    1,
+                    System.currentTimeMillis(),
+                    new ArrayList<String>() {{ add(sender.getName()); }}
+            ));
+            return;
+        }
+
+        data.setReports(data.getReports() + 1);
+        data.setMessage(message.toString());
+        cache.add(data);
+
+        sender.sendMessage(ChatColor.GREEN + "Вы зарепортили игрока!");
+    }
+
+    private void exceptionAdmin(CommandSender sender) {
+        sender.sendMessage(ChatColor.translateAlternateColorCodes('&', new StringBuffer()
+                .append("&cЧто-то призошло не так!\n")
+                .append("&fПопробуйте написать комманду правилно.\n")
+                .append("&f/report <ИГРОК> <ПРИЧИНА...> - Репортить игрока\n")
+                .append("&f/report admin list <лимит> - Получить список репортов\n")
+                .append("&f/report admin suspend/free <ИГРОК> - Снять подозрение(free) или Замарозить (suspend)\n")
+                .toString()));
+    }
+
+    private void exceptionPlayer(CommandSender sender) {
+        sender.sendMessage(ChatColor.translateAlternateColorCodes('&', new StringBuffer()
+                .append("&cЧто-то призошло не так!\n")
+                .append("&fПопробуйте написать комманду правилно.\n")
+                .append("&f/report <ИГРОК> <ПРИЧИНА...>")
+                .toString()));
+    }
+
+
+
+
+
+    private StringBuffer argsToMessage(String[] args, int min) {
+        StringBuffer buffer = new StringBuffer();
+        for (int arg_count=0; arg_count < args.length; arg_count++) {
+            if (arg_count < 1) continue;
+            buffer.append(args[arg_count]);
+        }
+        return buffer;
     }
 }
