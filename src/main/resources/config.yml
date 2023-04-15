@@ -2,14 +2,14 @@
 database:
   ip: "127.0.0.1"
   port: "3306"
-  user: ""
+  user: "root"
   password: ""
-  db: ""
+  db: "reports"
 
 suspend:
   title: "&c&lВы в списке подозреваемого."
   subtitle: "&7&lДождитесь проверки модераторов"
-  actionbar: ""
+  actionbar: "&9Вы замарожены!"
   message: "&cНаш вк для проверки: vk.com/???????"
 
 quick_message:

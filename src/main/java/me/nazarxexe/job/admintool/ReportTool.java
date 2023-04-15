@@ -1,28 +1,25 @@
 package me.nazarxexe.job.admintool;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.Expiry;
 import lombok.Getter;
 import me.nazarxexe.job.admintool.checking.CheckSuspend;
-import me.nazarxexe.job.admintool.database.data.ReportData;
+import me.nazarxexe.job.admintool.command.ReportExecutor;
+import me.nazarxexe.job.admintool.command.ReportTabCompleter;
 import me.nazarxexe.job.admintool.database.IDatabase;
 import me.nazarxexe.job.admintool.database.MySQL;
+import me.nazarxexe.job.admintool.database.ReportsTable;
+import me.nazarxexe.job.admintool.database.cache.Cache;
+import me.nazarxexe.job.admintool.impl.ICache;
+import me.nazarxexe.job.admintool.impl.PlayerLockable;
+import me.nazarxexe.job.admintool.impl.TableManageable;
 import me.nazarxexe.job.admintool.listener.PlayerListener;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.checkerframework.checker.index.qual.NonNegative;
-import org.jooq.Field;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 
 import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import static org.jooq.impl.SQLDataType.INTEGER;
@@ -30,57 +27,40 @@ import static org.jooq.impl.SQLDataType.INTEGER;
 @SuppressWarnings({"all"}) //
 public final class ReportTool extends JavaPlugin {
 
-    private @Getter IDatabase database;
+    private IDatabase database;
 
-    private @Getter static Cache<String, ReportData> cache;
+    private TableManageable reportsManager;
 
-    private @Getter static ReportTool instance;
+    private PlayerLockable playerLocker;
 
-    private @Getter static List<String> quick_message;
+    private ICache cache;
 
-    private @Getter String suspend_title;
-    private @Getter String suspend_subtitle;
-
-    private @Getter String suspend_message;
-    private @Getter String suspend_actionbar;
+    private static @Getter String SUSPEND_TITLE;
+    private static @Getter String SUSPEND_SUBTITLE;
+    private static @Getter String SUSPEND_ACTIONBAR;
+    private static @Getter String SUSPEND_MESSAGE;
+    private static @Getter List<String> QUICK_MESSAGE;
 
     @Override
     public void onEnable() {
         // Plugin startup logic
-
-        instance = this;
-
         saveDefaultConfig();
 
-        ConfigurationSection dbs = getConfig().getConfigurationSection("database");
+        database();
+        messages();
 
-        database = new MySQL(
-                dbs.getString("ip"),
-                dbs.getString("port"),
-                dbs.getString("user"),
-                dbs.getString("password"),
-                dbs.getString("db")
-        );
+        reportsManager = new ReportsTable(this, database);
+        cache = new Cache(reportsManager);
+        cache.build();
 
-        quick_message = getConfig().getStringList("quick_message");
-        ConfigurationSection suspend = getConfig().getConfigurationSection("suspend");
+        PlayerListener listener = new PlayerListener(reportsManager);
+        playerLocker = (PlayerLockable) listener;
 
+        command();
 
-        suspend_title = ChatColor.translateAlternateColorCodes('&', suspend.getString("title"));
-        suspend_subtitle = ChatColor.translateAlternateColorCodes('&', suspend.getString("subtitle"));
-        suspend_message = ChatColor.translateAlternateColorCodes('&', suspend.getString("message"));
-        suspend_actionbar = ChatColor.translateAlternateColorCodes('&', suspend.getString("actionbar"));
-
-        getServer().getScheduler().runTaskTimerAsynchronously(this, new CheckSuspend(), 0L, 20L);
-
-        initTable();
-        buildCache();
-
-        getCommand("report").setExecutor(new me.nazarxexe.job.admintool.command.Report());
-        getCommand("report").setTabCompleter(new me.nazarxexe.job.admintool.command.Report());
-
-        getServer().getPluginManager().registerEvents(new PlayerListener(), this);
-
+        getServer().getPluginManager().registerEvents(listener, this);
+        getServer().getScheduler().runTaskTimerAsynchronously(this, new CheckSuspend(cache,
+                this, playerLocker) ,0L, 20L);
     }
 
     private void initTable() {
@@ -99,155 +79,36 @@ public final class ReportTool extends JavaPlugin {
         }
     }
 
-    private void buildCache() {
-        cache = Caffeine.newBuilder()
-                .expireAfter(new Expiry<String, ReportData>() {
-                    @Override
-                    public long expireAfterCreate(String name, ReportData reportData, long l) {
+    private void database() {
 
-                        if (reportData.getReports() < 1) {
-                            return l;
-                        }
+        ConfigurationSection section = getConfig().getConfigurationSection("database");
 
-                        getServer().getScheduler().runTaskAsynchronously(ReportTool.getInstance(), new Runnable() {
-                            @Override
-                            public void run() {
-                                try {
-                                    // Проверить если репорт уже сушествует.
-                                    if (!( DSL.using(database.getConnection(), SQLDialect.MYSQL)
-                                            .select()
-                                            .from(DSL.table("reports"))
-                                            .where(DSL.field("player").eq(name))
-                                            .fetch().isEmpty() ))
-                                    {
-                                        DSL.using(database.getConnection(), SQLDialect.MYSQL)
-                                                .update(DSL.table("reports"))
-                                                .set(DSL.field("player"), name)
-                                                .set(DSL.field("message"), reportData.getMessage())
-                                                .set(DSL.field("reports"), reportData.getReports())
-                                                .set(DSL.field("date"), new Timestamp(reportData.getTimestamp()))
-                                                .where(DSL.field("player").eq(name))
-                                                .execute();
-                                        return;
-                                    }
-
-                                    DSL.using(database.getConnection(), SQLDialect.MYSQL)
-                                            .insertInto(DSL.table("reports"))
-                                            .set(DSL.field("player"), name)
-                                            .set(DSL.field("message"), reportData.getMessage())
-                                            .set(DSL.field("reports"), reportData.getReports())
-                                            .set(DSL.field("date"), new Timestamp(reportData.getTimestamp()))
-                                            .set(DSL.field("date"), DSL.timestamp(new Date(reportData.getTimestamp())))
-                                            .execute();
-                                } catch (SQLException e) {
-                                    throw new RuntimeException(e);
-                                }
-                            }
-                        });
-
-
-                        return l;
-                    }
-
-                    @Override
-                    public long expireAfterUpdate(String name, ReportData reportData, long currentTime, @NonNegative long currentDuration) {
-
-                        if (reportData.getReports() < 1) {
-                            return currentDuration;
-                        }
-
-                        getServer().getScheduler().runTaskAsynchronously(ReportTool.getInstance(), new Runnable() {
-                            @Override
-                            public void run() {
-                                try {
-                                    DSL.using(database.getConnection(), SQLDialect.MYSQL)
-                                            .update(DSL.table("reports"))
-                                            .set(DSL.field("player"), name)
-                                            .set(DSL.field("message"), reportData.getMessage())
-                                            .set(DSL.field("reports"), reportData.getReports())
-                                            .set(DSL.field("date"), new Timestamp(reportData.getTimestamp()))
-                                            .where(DSL.field("player").eq(name))
-                                            .execute();
-                                } catch (SQLException e) {
-                                    throw new RuntimeException(e);
-                                }
-                            }
-                        });
-                        return currentDuration;
-                    }
-
-
-                    @Override
-                    public long expireAfterRead(String uuid, ReportData reportData, long l, @NonNegative long l1) {
-                        return l1;
-                    }
-                })
-                .build();
+        database = new MySQL(
+                section.getString("ip"),
+                section.getString("port"),
+                section.getString("user"),
+                section.getString("password"),
+                section.getString("db")
+        );
+        initTable();
     }
 
-    public void free(String player) {
-
-        getServer().getScheduler().runTaskAsynchronously(this, new Runnable() {
-            @Override
-            public void run() {
-                try {
-
-                    cache.invalidate(
-                            player
-                    );
-
-                    DSL.using(database.getConnection(), SQLDialect.MYSQL)
-                            .deleteFrom(DSL.table("reports"))
-                            .where(DSL.field("player").eq(player))
-                            .execute();
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        });
+    private void messages() {
+        ConfigurationSection section = getConfig().getConfigurationSection("suspend");
+        SUSPEND_TITLE = color(section.getString("title"));
+        SUSPEND_MESSAGE = color(section.getString("message"));
+        SUSPEND_ACTIONBAR = color(section.getString("actionbar"));
+        SUSPEND_SUBTITLE = color(section.getString("subtitle"));
+        QUICK_MESSAGE = getConfig().getStringList("quick_message");
     }
 
+    private void command() {
+        getCommand("report").setExecutor(new ReportExecutor(this, cache, reportsManager, playerLocker));
+        getCommand("report").setTabCompleter(new ReportTabCompleter(this));
+    }
 
-    public void list(Player sender, int limit) {
-
-        getServer().getScheduler().runTaskAsynchronously(this, new Runnable() {
-            @Override
-            public void run() {
-
-                StringBuffer buffer = new StringBuffer();
-                buffer.append("Список из ")
-                        .append(limit).append(" репортов.\n");
-                buffer.append("--------------------- \n");
-
-
-                try {
-                    DSL.using(ReportTool.getInstance().database.getConnection(), SQLDialect.MYSQL)
-                            .select()
-                            .from(DSL.table("reports"))
-                            .orderBy(DSL.field("id"))
-                            .limit((limit))
-                            .forEach((record -> {
-                                buffer.append(new ReportData(
-                                                (String) record.get(DSL.field("player")),
-                                                (String) record.get(DSL.field("message")),
-                                                (Integer) record.get(DSL.field("reports")),
-                                                ((Timestamp) record.get(DSL.field("date"))).getTime(),
-                                                new ArrayList<>()
-                                        )
-                                                .getString()
-                                ).append("\n");
-                            }));
-                    buffer.append("--------------------- \n");
-                    sender.sendMessage(
-                            buffer.toString()
-                    );
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                }
-
-            }
-        });
-
+    private String color(String text) {
+        return ChatColor.translateAlternateColorCodes('&', text);
     }
 
 }
