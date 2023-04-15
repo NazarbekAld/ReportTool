@@ -152,7 +152,7 @@ public class ReportsTable implements TableManageable {
                                    .set(MESSAGE, data.getMessage())
                                    .set(DATE, new Timestamp(System.currentTimeMillis()))
                                    .set(REPORTS, data.getReports())
-                                   .where(data.getSuspender())
+                                   .where(PLAYER.eq(data.getSuspender()))
                                    .execute();
                            return;
                        }

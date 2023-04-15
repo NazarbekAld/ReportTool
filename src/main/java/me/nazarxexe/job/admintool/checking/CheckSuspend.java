@@ -22,6 +22,7 @@ public class CheckSuspend implements Runnable {
     public void run() {
 
         tool.getServer().getOnlinePlayers().forEach((player -> {
+            if (locker.isLocked(player.getName())) return;
 
             ReportData data = cache.get(player.getName());
             if (data == null) return;

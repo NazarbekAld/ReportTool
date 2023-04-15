@@ -9,15 +9,12 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.List;
 
-public class Report implements TabCompleter, CommandExecutor {
+public class ReportExecutor implements CommandExecutor {
 
     private final ReportTool tool;
     private final ICache cache;
@@ -25,41 +22,11 @@ public class Report implements TabCompleter, CommandExecutor {
 
     private final PlayerLockable locker;
 
-    public Report(ReportTool tool, ICache cache, TableManageable table, PlayerLockable locker) {
+    public ReportExecutor(ReportTool tool, ICache cache, TableManageable table, PlayerLockable locker) {
         this.tool = tool;
         this.cache = cache;
         this.table = table;
         this.locker = locker;
-    }
-
-
-    @Override
-    public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
-
-        if (args.length == 0) {
-
-            List<String> players = new ArrayList<>();
-
-            tool.getServer().getOnlinePlayers().forEach((player -> players.add(player.getName())));
-
-            if (sender.hasPermission("nazarxexe.tool.admin")) players.add("admin");
-
-            return players;
-        }
-
-        if (args[0].equals("admin") && args.length == 2 && sender.hasPermission("nazarxexe.tool.admin")) {
-            return new ArrayList<String>() {{
-                add("list");
-                add("suspend");
-                add("free");
-            }};
-        }
-
-        if (!(args[0].equals("admin")) && args.length > 1) {
-            return ReportTool.getQUICK_MESSAGE();
-        }
-
-        return null;
     }
 
     @Override
@@ -114,6 +81,7 @@ public class Report implements TabCompleter, CommandExecutor {
 
     private void free(CommandSender sender, String[] args) {
         locker.unlock(args[2]);
+        cache.remove(cache.get(args[2]));
         table.removeReportDataByName(args[2]);
         sender.sendMessage(ChatColor.GREEN + "Вы удалили игрока из списка подезриваемых!");
     }

@@ -2,7 +2,8 @@ package me.nazarxexe.job.admintool;
 
 import lombok.Getter;
 import me.nazarxexe.job.admintool.checking.CheckSuspend;
-import me.nazarxexe.job.admintool.command.Report;
+import me.nazarxexe.job.admintool.command.ReportExecutor;
+import me.nazarxexe.job.admintool.command.ReportTabCompleter;
 import me.nazarxexe.job.admintool.database.IDatabase;
 import me.nazarxexe.job.admintool.database.MySQL;
 import me.nazarxexe.job.admintool.database.ReportsTable;
@@ -102,9 +103,8 @@ public final class ReportTool extends JavaPlugin {
     }
 
     private void command() {
-        Report report = new Report(this, cache, reportsManager, playerLocker);
-        getCommand("report").setExecutor(report);
-        getCommand("report").setTabCompleter(report);
+        getCommand("report").setExecutor(new ReportExecutor(this, cache, reportsManager, playerLocker));
+        getCommand("report").setTabCompleter(new ReportTabCompleter(this));
     }
 
     private String color(String text) {
