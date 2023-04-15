@@ -2,7 +2,9 @@ package me.nazarxexe.job.admintool.command;
 
 import me.nazarxexe.job.admintool.ReportTool;
 import me.nazarxexe.job.admintool.database.data.ReportData;
-import me.nazarxexe.job.admintool.listener.PlayerListener;
+import me.nazarxexe.job.admintool.impl.ICache;
+import me.nazarxexe.job.admintool.impl.PlayerLockable;
+import me.nazarxexe.job.admintool.impl.TableManageable;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -17,6 +19,20 @@ import java.util.List;
 
 public class Report implements TabCompleter, CommandExecutor {
 
+    private final ReportTool tool;
+    private final ICache cache;
+    private final TableManageable table;
+
+    private final PlayerLockable locker;
+
+    public Report(ReportTool tool, ICache cache, TableManageable table, PlayerLockable locker) {
+        this.tool = tool;
+        this.cache = cache;
+        this.table = table;
+        this.locker = locker;
+    }
+
+
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
 
@@ -24,9 +40,7 @@ public class Report implements TabCompleter, CommandExecutor {
 
             List<String> players = new ArrayList<>();
 
-            ReportTool.getInstance().getServer().getOnlinePlayers().forEach((player -> {
-                players.add(player.getName());
-            }));
+            tool.getServer().getOnlinePlayers().forEach((player -> players.add(player.getName())));
 
             if (sender.hasPermission("nazarxexe.tool.admin")) players.add("admin");
 
@@ -42,7 +56,7 @@ public class Report implements TabCompleter, CommandExecutor {
         }
 
         if (!(args[0].equals("admin")) && args.length > 1) {
-            return ReportTool.getQuick_message();
+            return ReportTool.getQUICK_MESSAGE();
         }
 
         return null;
@@ -55,7 +69,7 @@ public class Report implements TabCompleter, CommandExecutor {
             if (args[0].equals("admin")) {
 
                 if (args[1].equals("list")) {
-                    ReportTool.getInstance().list((Player) sender, Integer.valueOf(args[2]) < 1 ? 1 : Integer.valueOf(args[2]));
+                    table.showList((Player) sender, Integer.parseInt(args[2]));
                 }
                 if (args[1].equals("suspend")) {
 
@@ -66,70 +80,49 @@ public class Report implements TabCompleter, CommandExecutor {
                         buffer.append(args[i]).append(" ");
                     }
 
-                    ReportTool.getCache().put(args[2], new ReportData(
+                    cache.add(new ReportData(
                             args[2],
                             buffer.toString(),
                             999,
                             System.currentTimeMillis(),
-                            new ArrayList<String>()
+                            new ArrayList<>()
                     ));
                     sender.sendMessage(ChatColor.GREEN + "Вы добавили игрока в спсиок подезриваемых.");
                 }
                 if (args[1].equals("free")) {
-                    PlayerListener.getLock().remove(args[2]);
-                    ReportTool.getInstance().free(args[2]);
+                    locker.unlock(args[2]);
+                    table.removeReportDataByName(args[2]);
                     sender.sendMessage(ChatColor.GREEN + "Вы удалили игрока из списка подезриваемых!");
                 }
 
 
             } else {
 
-                if (args[0].equals(((Player) sender).getName())){
-                    sender.sendMessage(ChatColor.RED + "Вы не можете зарепортить самого себя!");
-                    return true;
-                }
-
                 // PLAYER
-
                 StringBuffer buffer = new StringBuffer();
-
-                for (int i = 0; i < args.length; i++) {
+                for (int i=0; i < args.length; i++) {
                     if (i < 1) continue;
-                    buffer.append(args[i]).append(" ");
+                    buffer.append(args[i]);
                 }
 
-                if (!(ReportTool.getCache().asMap().containsKey(args[0]))) {
-                    ReportTool.getCache().put(args[0], new ReportData(
+                ReportData data = cache.get(args[0]);
+
+                if (data == null){
+                    cache.add(new ReportData(
                             args[0],
                             buffer.toString(),
                             1,
                             System.currentTimeMillis(),
-                            new ArrayList<String>() {{
-                                add(((Player) sender).getName());
-                            }}
+                            new ArrayList<String>() {{ add(sender.getName()); }}
                     ));
-                    sender.sendMessage(ChatColor.GREEN + "Вы отправили репорт к игроку!");
-                } else {
-
-                    if (ReportTool.getCache().asMap().get(args[0]).getReporters().contains(((Player) sender).getName()))
-                    {
-                        sender.sendMessage(ChatColor.RED + "Вы уже отпраили репорт к игроку!");
-                        return true;
-                    }
-                    ReportData existData = ReportTool.getCache().asMap().get(args[0]);
-
-                    existData.getReporters().add(((Player) sender).getName());
-                    existData.setReports(existData.getReports() + 1);
-                    ReportTool.getCache().put(args[0], new ReportData(
-                            args[0],
-                            buffer.toString(),
-                            existData.getReports(),
-                            System.currentTimeMillis(),
-                            existData.getReporters()
-                    ));
-                    sender.sendMessage(ChatColor.GREEN + "Вы отправили репорт к игроку!");
-
+                    return true;
                 }
+
+                data.setReports(data.getReports() + 1);
+                data.setMessage(buffer.toString());
+                cache.add(data);
+
+                sender.sendMessage(ChatColor.GREEN + "Вы зарепортили игрока!");
 
             }
 
@@ -144,6 +137,7 @@ public class Report implements TabCompleter, CommandExecutor {
                         .append("&f/report admin list <лимит> - Получить список репортов\n")
                         .append("&f/report admin suspend/free <ИГРОК> - Снять подозрение(free) или Замарозить (suspend)\n")
                         .toString()));
+                e.printStackTrace();
                 return true;
             }
             sender.sendMessage(ChatColor.translateAlternateColorCodes('&', new StringBuffer()
@@ -151,7 +145,7 @@ public class Report implements TabCompleter, CommandExecutor {
                             .append("&fПопробуйте написать комманду правилно.\n")
                             .append("&f/report <ИГРОК> <ПРИЧИНА...>")
                     .toString()));
-
+            e.printStackTrace();
             return true;
         }
     }
